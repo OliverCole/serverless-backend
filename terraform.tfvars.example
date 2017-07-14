@@ -1,0 +1,10 @@
+environment_configs = {
+  site_callback = "URL TO THANK YOU PAGE TO RETURN FROM LAMBDA",
+  email_table_name = "EMAIL DYNAMODB TABLE",
+  aes_password = "AES PASSWORD",
+  mail_api_key = "MAILGUN KEY",
+  mailgun_domain_name = "MAILGUN DOMAIN",
+  from_email = "OUTGOING EMAIL ACCOUNT"
+}
+
+mailgun_smtp_password = "RANDOM PASSWORD"
