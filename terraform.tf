@@ -9,24 +9,25 @@ variable "region" {
 }
 
 provider "aws" {
-    region = "${var.region}"
+  region = "${var.region}"
 }
 
 variable "mailgun_smtp_password" {}
 
 provider "mailgun" {
-    api_key = "${var.environment_configs["mail_api_key"]}"
+  api_key = "${var.environment_configs["mail_api_key"]}"
 }
 
 resource "mailgun_domain" "serverless" {
-    name = "${var.environment_configs["mailgun_domain_name"]}"
-    spam_action = "disabled"
-    smtp_password = "${var.mailgun_smtp_password}"
+  name          = "${var.environment_configs["mailgun_domain_name"]}"
+  spam_action   = "disabled"
+  smtp_password = "${var.mailgun_smtp_password}"
 }
 
 output "send" {
   value = "${mailgun_domain.serverless.sending_records}"
 }
+
 output "receive" {
   value = "${mailgun_domain.serverless.receiving_records}"
 }
@@ -44,9 +45,10 @@ resource "aws_dynamodb_table" "emails" {
 }
 
 resource "aws_iam_role" "LambdaBackend_master_lambda" {
-    name               = "LambdaBackend_master_lambda"
-    path               = "/"
-    assume_role_policy = <<POLICY
+  name = "LambdaBackend_master_lambda"
+  path = "/"
+
+  assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -63,13 +65,13 @@ POLICY
 }
 
 resource "aws_iam_role_policy_attachment" "LambdaBackend_master_lambda_AmazonDynamoDBFullAccess" {
-    role       = "${aws_iam_role.LambdaBackend_master_lambda.name}"
-    policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+  role       = "${aws_iam_role.LambdaBackend_master_lambda.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "LambdaBackend_master_lambda_CloudWatchFullAccess" {
-    role       = "${aws_iam_role.LambdaBackend_master_lambda.name}"
-    policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+  role       = "${aws_iam_role.LambdaBackend_master_lambda.name}"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
 }
 
 resource "aws_iam_role_policy" "ssm_read" {
@@ -99,11 +101,11 @@ resource "aws_iam_role_policy" "ssm_read" {
 POLICY
 }
 
-
 resource "aws_kms_key" "LambdaBackend_config" {
   description             = "LambdaBackend_config_key"
   deletion_window_in_days = 7
-  policy                  = <<POLICY
+
+  policy = <<POLICY
 {
   "Version" : "2012-10-17",
   "Id" : "key-consolepolicy-3",
@@ -147,9 +149,9 @@ resource "aws_kms_alias" "LambdaBackend_config_alias" {
 }
 
 module "parameters" {
-  source = "/ssm_parameter_map"
-  configs = "${var.environment_configs}"
-  prefix = "${terraform.env}"
+  source     = "/ssm_parameter_map"
+  configs    = "${var.environment_configs}"
+  prefix     = "${terraform.env}"
   kms_key_id = "${aws_kms_key.LambdaBackend_config.key_id}"
 }
 
@@ -162,6 +164,7 @@ resource "aws_lambda_function" "LambdaBackend_lambda" {
   runtime          = "nodejs6.10"
   timeout          = 15
   publish          = true
+
   environment {
     variables = {
       env = "${terraform.env}"
@@ -200,7 +203,7 @@ resource "aws_iam_policy_attachment" "cloudwatchlog" {
 }
 
 resource "aws_api_gateway_rest_api" "service" {
-  name        = "BackendService"
+  name = "BackendService"
 }
 
 resource "aws_api_gateway_resource" "api" {
@@ -215,7 +218,6 @@ resource "aws_api_gateway_resource" "email" {
   path_part   = "email"
 }
 
-
 resource "aws_api_gateway_method" "post" {
   rest_api_id   = "${aws_api_gateway_rest_api.service.id}"
   resource_id   = "${aws_api_gateway_resource.email.id}"
@@ -224,13 +226,14 @@ resource "aws_api_gateway_method" "post" {
 }
 
 resource "aws_api_gateway_integration" "integration" {
-  rest_api_id = "${aws_api_gateway_rest_api.service.id}"
-  resource_id = "${aws_api_gateway_resource.email.id}"
-  http_method = "${aws_api_gateway_method.post.http_method}"
+  rest_api_id             = "${aws_api_gateway_rest_api.service.id}"
+  resource_id             = "${aws_api_gateway_resource.email.id}"
+  http_method             = "${aws_api_gateway_method.post.http_method}"
   integration_http_method = "POST"
-  type        = "AWS"
-  uri         = "arn:aws:apigateway:${var.region}:lambda:path/2015-03-31/functions/${aws_lambda_function.LambdaBackend_lambda.arn}:$${stageVariables.alias}/invocations"
-  passthrough_behavior = "WHEN_NO_TEMPLATES"
+  type                    = "AWS"
+  uri                     = "arn:aws:apigateway:${var.region}:lambda:path/2015-03-31/functions/${aws_lambda_function.LambdaBackend_lambda.arn}:$${stageVariables.alias}/invocations"
+  passthrough_behavior    = "WHEN_NO_TEMPLATES"
+
   request_templates {
     "application/x-www-form-urlencoded" = <<EOF
 ##  See http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html
@@ -287,17 +290,24 @@ resource "aws_api_gateway_method_response" "301" {
   resource_id = "${aws_api_gateway_resource.email.id}"
   http_method = "${aws_api_gateway_method.post.http_method}"
   status_code = "301"
-  depends_on = ["aws_api_gateway_integration.integration"]
-  response_parameters = { "method.response.header.Location" = true }
+  depends_on  = ["aws_api_gateway_integration.integration"]
+
+  response_parameters = {
+    "method.response.header.Location" = true
+  }
 }
 
 resource "aws_api_gateway_integration_response" "default" {
-  rest_api_id = "${aws_api_gateway_rest_api.service.id}"
-  resource_id = "${aws_api_gateway_resource.email.id}"
-  http_method = "${aws_api_gateway_method.post.http_method}"
-  status_code = "${aws_api_gateway_method_response.301.status_code}"
+  rest_api_id       = "${aws_api_gateway_rest_api.service.id}"
+  resource_id       = "${aws_api_gateway_resource.email.id}"
+  http_method       = "${aws_api_gateway_method.post.http_method}"
+  status_code       = "${aws_api_gateway_method_response.301.status_code}"
   selection_pattern = "^Email.MovedPermanently.*"
-  response_parameters = { "method.response.header.Location" = "integration.response.body.errorType" },
+
+  response_parameters = {
+    "method.response.header.Location" = "integration.response.body.errorType"
+  }
+
   depends_on = ["aws_api_gateway_integration.integration"]
 }
 
@@ -330,13 +340,13 @@ resource "aws_lambda_alias" "alias" {
 }
 
 resource "aws_lambda_permission" "invoke" {
-  statement_id   = "${terraform.env}Invoke"
-  action         = "lambda:InvokeFunction"
-  function_name  = "${aws_lambda_function.LambdaBackend_lambda.arn}"
-  principal      = "apigateway.amazonaws.com"
-  source_arn     = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.service.id}/*/${aws_api_gateway_method.post.http_method}/${aws_api_gateway_resource.api.path_part}/${aws_api_gateway_resource.email.path_part}"
-  qualifier      = "${terraform.env}"
-  depends_on     = ["aws_lambda_alias.alias"]
+  statement_id  = "${terraform.env}Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.LambdaBackend_lambda.arn}"
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.service.id}/*/${aws_api_gateway_method.post.http_method}/${aws_api_gateway_resource.api.path_part}/${aws_api_gateway_resource.email.path_part}"
+  qualifier     = "${terraform.env}"
+  depends_on    = ["aws_lambda_alias.alias"]
 }
 
 output "invoke_url" {

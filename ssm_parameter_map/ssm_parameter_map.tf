@@ -1,6 +1,6 @@
 variable "configs" {
   description = "Key/value pairs to create in the SSM Parameter Store"
-  type = "map"
+  type        = "map"
 }
 
 variable "prefix" {
@@ -12,9 +12,9 @@ variable "kms_key_id" {
 }
 
 resource "aws_ssm_parameter" "configs" {
-  count = "${length(keys(var.configs))}"
-  name  = "/${var.prefix}/${element(keys(var.configs),count.index)}"
-  type  = "SecureString"
-  value = "${element(values(var.configs),count.index)}"
+  count  = "${length(keys(var.configs))}"
+  name   = "/${var.prefix}/${element(keys(var.configs),count.index)}"
+  type   = "SecureString"
+  value  = "${element(values(var.configs),count.index)}"
   key_id = "${var.kms_key_id}"
 }
