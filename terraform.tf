@@ -149,7 +149,7 @@ resource "aws_kms_alias" "LambdaBackend_config_alias" {
 }
 
 module "parameters" {
-  source     = "/ssm_parameter_map"
+  source     = "./ssm_parameter_map"
   configs    = "${var.environment_configs}"
   prefix     = "${terraform.env}"
   kms_key_id = "${aws_kms_key.LambdaBackend_config.key_id}"
